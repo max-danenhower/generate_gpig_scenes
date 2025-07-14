@@ -1,19 +1,8 @@
-import sys
 import numpy as np
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap, BoundaryNorm
 import xarray as xr
 from rrs_inversion_pigments import rrs_inversion_pigments
 import ray
 import time
-import L2_utils
-import multiprocessing
-import threading
-import psutil
-from pprint import pprint
-from threadpoolctl import threadpool_info
 
 def read_data(rrs_path,sal_path,temp_path):
     # define wavelengths
