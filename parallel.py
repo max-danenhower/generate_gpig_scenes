@@ -111,6 +111,8 @@ def main():
     temp_np = temp_flat.values.T
     sal_np = sal_flat.values.T
 
+    start = time.time()
+
     ray.init(include_dashboard=True)
 
     print('ray availble cores', ray.available_resources())
@@ -129,8 +131,6 @@ def main():
         for i in range(0, len(Rrs_np), batch_size)
     ]
 
-    start = time.time()
-
     # Launch Ray tasks
     futures = [run_batch.remote(*b) for b in batches]
     results = ray.get(futures)  # list of lists, flatten if needed
@@ -140,24 +140,17 @@ def main():
     n_lines = r.sizes['number_of_lines']
     n_pixels = r.sizes['pixels_per_line']
 
-       
-    print('time',time.time()-start)
-    '''
     # Convert to 3D array: (n_lines, n_pixels, 4)
     results_array = np.array(flat_results).reshape(n_lines, n_pixels, -1)
 
-    for i in range(len(results_array)):
-        for j in range(len(results_array[0])):
-            chla,chlb,chlc,ppc = results_array[i][j]
-            r['chla'][i][j] = chla
-            r['chlb'][i][j] = chlb
-            r['chlc'][i][j] = chlc
-            r['ppc'][i][j] = ppc
+    r['chla'].values[:, :] = results_array[:, :, 0]
+    r['chlb'].values[:, :] = results_array[:, :, 1]
+    r['chlc'].values[:, :] = results_array[:, :, 2]
+    r['ppc'].values[:, :]  = results_array[:, :, 3]
 
-    print('time',time.time()-start)
+    print('time', time.time()-start)
 
     r.to_netcdf('output')
-    '''
 
 if __name__ == "__main__":
     main()
