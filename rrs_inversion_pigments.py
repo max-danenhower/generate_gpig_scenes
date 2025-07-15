@@ -71,10 +71,6 @@ def rrs_inversion_pigments(Rrs, Rrs_unc, wl, temp, sal):
         updated relationships between Gaussians and HPLC pigments.
     '''
 
-    #print("OMP_NUM_THREADS =", os.environ.get("OMP_NUM_THREADS"))
-    #print(f"[PID {os.getpid()}] Total threads in pigment function: {psutil.Process().num_threads()}")
-    #print('threads (rrs_inversion_pigments)',threading.active_count())
-
     # cut off data < 400 or > 600 
     wlfull = wl
     Iwl = np.where((wlfull > 400) & (wlfull < 600) & (~np.isnan(wlfull)))[0]

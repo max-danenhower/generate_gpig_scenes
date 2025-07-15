@@ -1,10 +1,20 @@
+import os
+
+# Force the working directory to your script folder
+os.chdir("C:/Users/AIRS Shared Lab/Desktop/maxd_git/generate_gpig_scenes")
+
 import numpy as np
 import xarray as xr
 from rrs_inversion_pigments import rrs_inversion_pigments
 import ray
 import time
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import earthaccess
+import sys
+
+# earthaccess login credentials
+EARTHDATA_USERNAME = 'maxdanenhower'
+EARTHDATA_PASSWORD = 'earthdataPSWD1!'
 
 def load_data():
     '''
@@ -33,7 +43,7 @@ def load_data():
 
     bbox = (90,13,91,14)
 
-    print('searching for data from', tspan[0], 'to', tspan[1])
+    print('searching for data from', tspan[0], 'to', tspan[1],'\n')
 
     success = True
 
@@ -44,10 +54,11 @@ def load_data():
         count=1
     )
     if (len(rrs_results) > 0):
-        print('collecting rrs data')
+        print('collecting rrs data\n')
+        print('L2 AOP filename:', rrs_results[0],'\n')
         rrs_paths = earthaccess.download(rrs_results, 'rrs_data')
     else:
-        print('No L2 AOP data found')
+        print('No L2 AOP data found\n')
         success = False
 
     sal_results = earthaccess.search_data(
@@ -56,10 +67,11 @@ def load_data():
         count=5
     )
     if (len(sal_results) > 0):
-        print('collecting salinity data')
+        print('collecting salinity data\n')
+        print('salinity filename:',sal_results[4],'\n')
         sal_paths = earthaccess.download(sal_results[4], 'sal_data')
     else:
-        print('No salinity data found')
+        print('No salinity data found\n')
         success = False
 
     temp_results = earthaccess.search_data(
@@ -68,10 +80,11 @@ def load_data():
         count=1
     )
     if (len(temp_results) > 0):
-        print('collecting temperature data')
+        print('collecting temperature data\n')
+        print('temperature filename:',temp_results[0],'\n')
         temp_paths = earthaccess.download(temp_results, 'temp_data')
     else:
-        print('No temperature data found')
+        print('No temperature data found\n')
         success = False
 
     if success:
@@ -100,7 +113,7 @@ def read_data(rrs_path,sal_path,temp_path):
     e_bound = dataset_r.longitude.values.max()
     w_bound = dataset_r.longitude.values.min()
 
-    print('north',n_bound,'south',s_bound,'east',e_bound,'west',w_bound)
+    print('L2 granule bounds: north',n_bound,'south',s_bound,'east',e_bound,'west',w_bound,'\n')
 
     rrs_box = dataset_r["Rrs"].where(
         (
@@ -165,6 +178,17 @@ def run_batch(rrs_batch,rrs_unc_batch,wl,temp_batch,sal_batch):
 def main():
     # miniconda path: miniconda3\Scripts\activate.bat
 
+    log_path = 'C:/Users/AIRS Shared Lab/Desktop/maxd_git/generate_gpig_scenes/task-log.txt'
+    sys.stdout = open(log_path, 'a', buffering=1)
+    sys.stderr = sys.stdout
+
+    print(f"\n--- Script started at {datetime.now()} ---\n")
+
+    try: 
+        earthaccess.login(strategy='environment')
+    except:
+        print('earthaccess login failed\n')
+
     r_path, s_path, t_path = load_data()
 
     r,ru,wl,s,t = read_data(r_path,s_path,t_path)
@@ -175,6 +199,7 @@ def main():
     sal_flat = s.stack(pix=('number_of_lines', 'pixels_per_line'))         # shape: (n_pix,)
 
     n_pix = Rrs_flat.sizes['pix']
+    print('number of pixels:',n_pix,'\n')
 
     Rrs_np = Rrs_flat.values.T       # shape: (n_pix, 172)
     Rrs_unc_np = Rrs_unc_flat.values.T
@@ -185,10 +210,9 @@ def main():
 
     ray.init(include_dashboard=True)
 
-    print('ray availble cores', ray.available_resources())
+    print('ray availble resources', ray.available_resources(),'\n')
 
-    batch_size = 1000
-    print('batch size',batch_size)
+    batch_size = 10_000
 
     batches = [
         (
@@ -218,11 +242,15 @@ def main():
     r['chlc'].values[:, :] = results_array[:, :, 2]
     r['ppc'].values[:, :]  = results_array[:, :, 3]
 
-    print('time', time.time()-start)
+    print('total task runtime', time.time()-start,'\n')
 
     output_str = 'gpig-' + str(date.today() - timedelta(days=7))
 
-    r.to_netcdf(output_str)
+    try:
+        r.to_netcdf(output_str)
+        print('successfully saved results\n')
+    except:
+        print('error loading results\n')
 
 if __name__ == "__main__":
     main()
