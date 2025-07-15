@@ -3,7 +3,7 @@ import xarray as xr
 from rrs_inversion_pigments import rrs_inversion_pigments
 import ray
 import time
-from datetime import date
+from datetime import date, timedelta
 import earthaccess
 
 def load_data():
@@ -27,18 +27,18 @@ def load_data():
     temp_path : string
         A single file path to a temperature file.
     '''
+    # last weeks data
+    file_date = date.today() - timedelta(days=7)
+    tspan = (file_date, file_date)
 
-    today = date.today()
-    tspan = (today, today)
-
-    bbox = (13,90,14,91)
+    bbox = (90,13,91,14)
 
     print('searching for data from', tspan[0], 'to', tspan[1])
 
     success = True
 
     rrs_results = earthaccess.search_data(
-        short_name='PACE_OCI_L2_AOP',
+        short_name='PACE_OCI_L2_AOP_NRT',
         bounding_box=bbox,
         temporal=tspan,
         count=1
@@ -53,11 +53,11 @@ def load_data():
     sal_results = earthaccess.search_data(
         short_name='SMAP_JPL_L3_SSS_CAP_8DAY-RUNNINGMEAN_V5',
         temporal=tspan,
-        count=1
+        count=5
     )
     if (len(sal_results) > 0):
         print('collecting salinity data')
-        sal_paths = earthaccess.download(sal_results, 'sal_data')
+        sal_paths = earthaccess.download(sal_results[4], 'sal_data')
     else:
         print('No salinity data found')
         success = False
@@ -220,7 +220,9 @@ def main():
 
     print('time', time.time()-start)
 
-    r.to_netcdf('output')
+    output_str = 'gpig-' + str(date.today() - timedelta(days=7))
+
+    r.to_netcdf(output_str)
 
 if __name__ == "__main__":
     main()
