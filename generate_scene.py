@@ -12,10 +12,6 @@ from datetime import date, timedelta, datetime
 import earthaccess
 import sys
 
-# earthaccess login credentials
-EARTHDATA_USERNAME = 'maxdanenhower'
-EARTHDATA_PASSWORD = 'earthdataPSWD1!'
-
 def load_data():
     '''
     Downloads one L2 PACE apparent optical properties (AOP) file that intersects the coordinate box passed in, as well as 
@@ -184,10 +180,7 @@ def main():
 
     print(f"\n--- Script started at {datetime.now()} ---\n")
 
-    try: 
-        earthaccess.login(strategy='environment')
-    except:
-        print('earthaccess login failed\n')
+    earthaccess.login(persist=True)
 
     r_path, s_path, t_path = load_data()
 
