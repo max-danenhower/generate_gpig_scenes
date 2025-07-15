@@ -3,6 +3,81 @@ import xarray as xr
 from rrs_inversion_pigments import rrs_inversion_pigments
 import ray
 import time
+from datetime import date
+import earthaccess
+
+def load_data():
+    '''
+    Downloads one L2 PACE apparent optical properties (AOP) file that intersects the coordinate box passed in, as well as 
+    temperature and salinity files. Data files are saved to local folders named 'L2_data', 'sal_data', and 'temp_data'.
+
+    Parameters:
+    -----------
+    tspan : tuple of str
+        A tuple containing two strings both with format 'YYYY-MM-DD'. The first date in the tuple must predate the second date in the tuple.
+    bbox : tuple of floats or ints
+        A tuple representing spatial bounds in the form (lower_left_lon, lower_left_lat, upper_right_lon, upper_right_lat).
+
+    Returns:
+    --------
+    L2_path : string
+        A single file path to a PACE L2 AOP file.
+    sal_path : string
+        A single file path to a salinity file.
+    temp_path : string
+        A single file path to a temperature file.
+    '''
+
+    today = date.today()
+    tspan = (today, today)
+
+    bbox = (13,90,14,91)
+
+    print('searching for data from', tspan[0], 'to', tspan[1])
+
+    success = True
+
+    rrs_results = earthaccess.search_data(
+        short_name='PACE_OCI_L2_AOP',
+        bounding_box=bbox,
+        temporal=tspan,
+        count=1
+    )
+    if (len(rrs_results) > 0):
+        print('collecting rrs data')
+        rrs_paths = earthaccess.download(rrs_results, 'rrs_data')
+    else:
+        print('No L2 AOP data found')
+        success = False
+
+    sal_results = earthaccess.search_data(
+        short_name='SMAP_JPL_L3_SSS_CAP_8DAY-RUNNINGMEAN_V5',
+        temporal=tspan,
+        count=1
+    )
+    if (len(sal_results) > 0):
+        print('collecting salinity data')
+        sal_paths = earthaccess.download(sal_results, 'sal_data')
+    else:
+        print('No salinity data found')
+        success = False
+
+    temp_results = earthaccess.search_data(
+        short_name='MUR-JPL-L4-GLOB-v4.1',
+        temporal=tspan,
+        count=1
+    )
+    if (len(temp_results) > 0):
+        print('collecting temperature data')
+        temp_paths = earthaccess.download(temp_results, 'temp_data')
+    else:
+        print('No temperature data found')
+        success = False
+
+    if success:
+        return rrs_paths[0], sal_paths[0], temp_paths[0]
+    else:
+        raise Exception('Missing data')
 
 def read_data(rrs_path,sal_path,temp_path):
     # define wavelengths
@@ -24,10 +99,6 @@ def read_data(rrs_path,sal_path,temp_path):
     s_bound = dataset_r.latitude.values.min() 
     e_bound = dataset_r.longitude.values.max()
     w_bound = dataset_r.longitude.values.min()
-   # n_bound = 25
-   # s_bound = 23
-   # w_bound = -111
-   # e_bound = -109
 
     print('north',n_bound,'south',s_bound,'east',e_bound,'west',w_bound)
 
@@ -94,9 +165,8 @@ def run_batch(rrs_batch,rrs_unc_batch,wl,temp_batch,sal_batch):
 def main():
     # miniconda path: miniconda3\Scripts\activate.bat
 
-    r_path = 'rrs_data/PACE_OCI.20250204T201251.L2.OC_AOP.V3_0.nc'
-    s_path = 'sal_data/SMAP_L3_SSS_20250204_8DAYS_V5.0.nc'
-    t_path = 'temp_data/20250204090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc'
+    r_path, s_path, t_path = load_data()
+
     r,ru,wl,s,t = read_data(r_path,s_path,t_path)
 
     Rrs_flat = r.stack(pix=('number_of_lines', 'pixels_per_line'))         # shape: (n_pix, 172)
