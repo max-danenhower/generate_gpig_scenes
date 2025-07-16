@@ -11,6 +11,12 @@ import time
 from datetime import date, timedelta, datetime
 import earthaccess
 import sys
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+
+
 
 def load_data():
     '''
