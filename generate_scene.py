@@ -87,6 +87,34 @@ def load_data():
         return rrs_paths[0], sal_paths[0], temp_paths[0]
     else:
         raise Exception('Missing data')
+    
+def plot_pigments(data, lower_bound, upper_bound):
+    '''
+    Plots the pigment data from an L2 file with lat/lon coordinates using a color map
+
+    Paramaters:
+    -----------
+    data : Xarray data array
+        Contains pigment values to be plotted.
+    lower_bound : float
+        The lowest value represented on the color scale.
+    upper_bound : float
+        The upper value represented on the color scale.
+    '''
+
+    cmap = plt.get_cmap("viridis")
+    colors = cmap(np.linspace(0, 1, cmap.N))
+    colors = np.vstack((np.array([1, 1, 1, 1]), colors)) 
+    custom_cmap = ListedColormap(colors)
+    norm = BoundaryNorm(list(np.linspace(lower_bound, upper_bound, cmap.N)), ncolors=custom_cmap.N) 
+
+    plt.figure()
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.coastlines()
+    ax.gridlines(draw_labels={"left": "y", "bottom": "x"})
+    data.plot(x="longitude", y="latitude", cmap=custom_cmap, ax=ax, norm=norm)
+    ax.add_feature(cfeature.LAND, facecolor='white', zorder=1)
+    plt.show()
 
 def read_data(rrs_path,sal_path,temp_path):
     # define wavelengths
@@ -247,7 +275,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 
 
